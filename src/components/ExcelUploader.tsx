@@ -42,6 +42,21 @@ const ExcelUploader: React.FC<ExcelUploaderProps> = ({ onDataLoaded }) => {
           return;
         }
 
+        // Validate dataset has required columns (you can adjust these based on your dataset)
+        const requiredColumns = ["hemoglobin", "status"];
+        const sampleRow = jsonData[0];
+        const missingColumns = requiredColumns.filter(
+          col => !Object.keys(sampleRow).some(
+            key => key.toLowerCase().includes(col.toLowerCase())
+          )
+        );
+
+        if (missingColumns.length > 0) {
+          toast.error(`Dataset missing required columns: ${missingColumns.join(", ")}`);
+          setIsUploading(false);
+          return;
+        }
+
         onDataLoaded(jsonData);
         toast.success(`Successfully loaded ${jsonData.length} records from ${file.name}`);
       } catch (error) {
@@ -97,7 +112,7 @@ const ExcelUploader: React.FC<ExcelUploaderProps> = ({ onDataLoaded }) => {
 
       <div className="text-xs text-gray-500 flex items-center gap-1">
         <AlertCircleIcon className="h-3 w-3" />
-        <span>Excel file should contain columns for patient data and hemoglobin values</span>
+        <span>Excel file should contain hemoglobin values and anemia status data</span>
       </div>
     </div>
   );

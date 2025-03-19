@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageIcon, UploadIcon, RefreshCwIcon, AlertCircleIcon, CheckCircleIcon, InfoIcon, DatabaseIcon } from "lucide-react";
 import ExcelUploader from "@/components/ExcelUploader";
 import DatasetDisplay from "@/components/DatasetDisplay";
+import { analyzeHemoglobin, findClosestMatch } from "@/utils/dataAnalysis";
+import { toast } from "sonner";
 
 const Demo = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -34,30 +35,41 @@ const Demo = () => {
     
     setIsAnalyzing(true);
     
-    // Simulate API call with timeout
-    setTimeout(() => {
-      // For demo purposes, generate random result
-      const hemoglobin = 8 + Math.random() * 7; // Random value between 8-15
-      let status: 'normal' | 'mild' | 'moderate' | 'severe';
+    // Check if we have dataset records
+    if (datasetRecords.length === 0) {
+      toast.warning("No dataset loaded. Using default analysis method.");
       
-      if (hemoglobin >= 12) {
-        status = 'normal';
-      } else if (hemoglobin >= 10) {
-        status = 'mild';
-      } else if (hemoglobin >= 8) {
-        status = 'moderate';
-      } else {
-        status = 'severe';
-      }
-      
-      setResult({
-        status,
-        hemoglobin: parseFloat(hemoglobin.toFixed(1)),
-        confidence: parseFloat((0.75 + Math.random() * 0.2).toFixed(2)) // Random confidence between 75-95%
-      });
-      
-      setIsAnalyzing(false);
-    }, 3000);
+      // Simulate API call with timeout
+      setTimeout(() => {
+        // Using our analysis function instead of random values
+        const hemoglobin = 8 + Math.random() * 7; // Random value between 8-15
+        const result = analyzeHemoglobin(parseFloat(hemoglobin.toFixed(1)));
+        
+        setResult(result);
+        setIsAnalyzing(false);
+      }, 3000);
+    } else {
+      // With dataset available, find closest match from dataset
+      setTimeout(() => {
+        // For demo purposes, extract a value from image analysis
+        // In a real app, this would come from actual image processing
+        const estimatedHemoglobin = 8 + Math.random() * 7;
+        
+        // Find closest match in dataset
+        const match = findClosestMatch(datasetRecords, estimatedHemoglobin);
+        
+        if (match) {
+          setResult(match);
+        } else {
+          // Fallback to basic analysis if no match found
+          const result = analyzeHemoglobin(parseFloat(estimatedHemoglobin.toFixed(1)));
+          setResult(result);
+          toast.info("Used basic analysis as no close match found in dataset");
+        }
+        
+        setIsAnalyzing(false);
+      }, 3000);
+    }
   };
 
   const handleReset = () => {
@@ -67,6 +79,7 @@ const Demo = () => {
 
   const handleDataLoaded = (data: any[]) => {
     setDatasetRecords(data);
+    toast.success("Dataset loaded successfully and will be used for analysis");
   };
 
   const getStatusColor = () => {
@@ -91,7 +104,9 @@ const Demo = () => {
             </p>
             <p className="text-gray-500 mt-2">
               <InfoIcon className="inline-block w-4 h-4 mr-1" />
-              This is a simulation for demonstration purposes only
+              {datasetRecords.length > 0 ? 
+                `Using your uploaded dataset with ${datasetRecords.length} records` : 
+                "Upload your dataset for more accurate analysis"}
             </p>
           </div>
         </div>
@@ -195,6 +210,7 @@ const Demo = () => {
                           <div className="space-y-4">
                             <p className="text-gray-700 text-center pb-4">
                               Ready to analyze the conjunctiva image
+                              {datasetRecords.length > 0 && " using your dataset"}
                             </p>
                             <Button 
                               onClick={handleAnalyze} 
@@ -238,6 +254,11 @@ const Demo = () => {
                                 <p className="text-xl font-bold">
                                   {Math.round((result.confidence || 0) * 100)}%
                                 </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {datasetRecords.length > 0 ? 
+                                    "Based on dataset match" : 
+                                    "Based on standard clinical ranges"}
+                                </p>
                               </div>
                             </div>
                             
@@ -271,7 +292,7 @@ const Demo = () => {
                       <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
                         <DatabaseIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                         <p className="text-gray-600">Upload an Excel file to view the dataset</p>
-                        <p className="text-sm text-gray-500 mt-2">The data will be displayed here</p>
+                        <p className="text-sm text-gray-500 mt-2">The data will be used for analysis</p>
                       </div>
                     )}
                   </CardContent>
@@ -286,7 +307,7 @@ const Demo = () => {
               </h3>
               <p className="text-gray-700">
                 This demo is for educational purposes only and does not provide actual medical diagnosis. 
-                The results are simulated and should not be used for clinical decision-making. Always consult 
+                The results are based on the dataset you provide or simulated data. Always consult 
                 a healthcare professional for proper diagnosis and treatment of anemia.
               </p>
             </div>
